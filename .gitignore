@@ -5,6 +5,8 @@
 .DS_Store
 .sbt
 .bsp
+.metals
+.vscode
 .history
 .cache-main
 .scala_dependencies
