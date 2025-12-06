@@ -49,7 +49,7 @@ object StreamRoute extends Responses {
     .cache
 
   val routes = Routes(
-    // Stream database query results as CSV file
+    // Stream database query results as CSV file (import data first using /stream/import)
     Method.GET / "stream" / "export" / string("coin") -> handler { (coin: String, req: Request) =>
       for {
         env <- ZIO.environment[Kuzminki]
@@ -78,7 +78,7 @@ object StreamRoute extends Responses {
       } yield response
     },
 
-    // Stream CSV file upload directly to database with batching
+    // Stream CSV file upload directly to database with batching (sample file in csv folder)
     Method.POST / "stream" / "import" -> handler { (req: Request) =>
       req.body.asStream
         .via(ZPipeline.utf8Decode)
@@ -88,7 +88,7 @@ object StreamRoute extends Responses {
         .as(jsonOkResponse(()))
     },
 
-    // Safe import using temporary table with rollback on failure
+    // Safe import using temporary table with rollback on failure (sample file in csv folder)
     Method.POST / "stream" / "import" / "safe" -> handler { (req: Request) =>
       val uid = UUID.randomUUID
 
