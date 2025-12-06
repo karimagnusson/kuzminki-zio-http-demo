@@ -1,10 +1,26 @@
+error id: file://<WORKSPACE>/src/main/scala/routes/TypeRoute.scala:`<none>`.
+file://<WORKSPACE>/src/main/scala/routes/TypeRoute.scala
+empty definition using pc, found symbol in pc: `<none>`.
+empty definition using semanticdb
+empty definition using fallback
+non-local guesses:
+	 -zio/Int#
+	 -zio/http/Int#
+	 -zio/json/Int#
+	 -models/Int#
+	 -kuzminki/api/Int#
+	 -kuzminki/fn/Int#
+	 -Int#
+	 -scala/Predef.Int#
+offset: 760
+uri: file://<WORKSPACE>/src/main/scala/routes/TypeRoute.scala
+text:
+```scala
 package routes
 
 import zio.*
 import zio.http.*
 import zio.json.*
-import zio.schema.{DeriveSchema, Schema}
-import zio.schema.codec.JsonCodec.schemaBasedBinaryCodec
 import scala.language.implicitConversions
 import models.*
 import kuzminki.api.*
@@ -30,16 +46,14 @@ object TypeRoute extends Responses {
     given JsonCodec[TripType] = DeriveJsonCodec.gen[TripType]
   }
 
-  case class TripDataType(cityId: Int, price: Int)
+  case class TripDataType(cityId: In@@t, price: Int)
   object TripDataType {
     given JsonCodec[TripDataType] = DeriveJsonCodec.gen[TripDataType]
-    given Schema[TripDataType]    = DeriveSchema.gen[TripDataType]
   }
 
   case class TripPriceType(id: Long, price: Int)
   object TripPriceType {
     given JsonCodec[TripPriceType] = DeriveJsonCodec.gen[TripPriceType]
-    given Schema[TripPriceType]    = DeriveSchema.gen[TripPriceType]
   }
 
   val routes = Routes(
@@ -62,9 +76,14 @@ object TypeRoute extends Responses {
 
     // INSERT with type-safe input and output
     Method.POST / "type" / "insert" / "trip" -> handler { (req: Request) =>
-      for {
-        data <- req.body.to[TripDataType] // deserialize JSON to case class
-        result <- sql
+      withJsonBody(req) { json =>
+
+        val data = json.fromJson[TripDataType] match { // deserialize JSON to case class
+          case Left(json)  => throw new Exception(s"Invalid data '$json'")
+          case Right(data) => data
+        }
+
+        sql
           .insert(trip)
           .cols2(t =>
             (
@@ -81,14 +100,20 @@ object TypeRoute extends Responses {
             )
           )
           .runHeadType[TripType] // map result to case class
-      } yield Response.json(result.toJson)
+          .map(rsp => Response.json(rsp.toJson))
+      }
     },
 
     // UPDATE with type-safe input and output
     Method.PATCH / "type" / "update" / "trip" -> handler { (req: Request) =>
-      for {
-        data <- req.body.to[TripPriceType] // deserialize JSON to case class
-        result <- sql
+      withJsonBody(req) { json =>
+
+        val data = json.fromJson[TripPriceType] match { // deserialize JSON to case class
+          case Left(json)  => throw new Exception(s"Invalid data '$json'")
+          case Right(data) => data
+        }
+
+        sql
           .update(trip)
           .set(_.price ==> data.price)
           .where(_.id === data.id)
@@ -100,7 +125,15 @@ object TypeRoute extends Responses {
             )
           )
           .runHeadType[TripType] // map result to case class
-      } yield Response.json(result.toJson)
+          .map(rsp => Response.json(rsp.toJson))
+      }
     }
   )
 }
+
+```
+
+
+#### Short summary: 
+
+empty definition using pc, found symbol in pc: `<none>`.

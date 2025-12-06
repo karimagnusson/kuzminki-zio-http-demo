@@ -1,4 +1,4 @@
-scalaVersion := "2.13.12"
+scalaVersion := "3.3.1"
 
 name := "kuzminki-zhttp-demo"
 
@@ -11,14 +11,13 @@ scalacOptions ++= Seq(
 
 lazy val root = (project in file("."))
   .settings(
-    name := "kuzminki-zio",
+    name := "kuzminki-zhttp-demo",
     libraryDependencies ++= Seq(
-      "com.typesafe" % "config" % "1.4.1",
-      "dev.zio" %% "zio" % "2.0.21",
-      "dev.zio" %% "zio-streams" % "2.0.21",
-      "dev.zio" %% "zio-http" % "3.0.0-RC1",
-      "dev.zio" %% "zio-json" % "0.6.2",
-      "io.github.karimagnusson" %% "kuzminki-zio-2" % "0.9.5-RC4"
+      "com.typesafe"             % "config"         % "1.4.1",
+      "dev.zio"                 %% "zio"            % "2.1.22",
+      "dev.zio"                 %% "zio-streams"    % "2.1.22",
+      "dev.zio"                 %% "zio-http"       % "3.7.0",
+      "dev.zio"                 %% "zio-json"       % "0.7.45",
+      "io.github.karimagnusson" %% "kuzminki-zio-2" % "0.9.5"
     )
   )
-

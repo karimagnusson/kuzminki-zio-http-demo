@@ -2,48 +2,113 @@
 | --- | --- |
 | [![badge-discord](https://img.shields.io/discord/629491597070827530?logo=discord)](https://discord.com/channels/629491597070827530/1063139826636963931) | [![Twitter Follow](https://img.shields.io/twitter/follow/kuzminki_lib?label=follow&style=flat&logo=twitter&color=brightgreen)](https://twitter.com/kuzminki_lib) |
 
-# kuzminki-zhttp-demo
+# kuzminki-zio-http-demo
 
-kuzminki-zhttp-demo is an example REST API using [kuzminki-zio-2](https://github.com/karimagnusson/kuzminki-zio-2) and [zio-http](https://github.com/dream11/zio-http).
+A comprehensive demonstration REST API showcasing [Kuzminki](https://github.com/karimagnusson/kuzminki-zio-2), a type-safe SQL query builder for PostgreSQL, integrated with [ZIO HTTP](https://github.com/zio/zio-http) for building high-performance web services.
 
-This demo uses ZIO 2, zio-http 3.0.0-RC1 and kuzminki-zio-2 0.9.5-RC4.
+## Tech Stack
 
-Examples:
-- Select, insert, update, delete
-- Cached queries
-- Streaming
-- Jsonb field
-- Array field
-- Timestamp methods
+- **Scala** 3.3.1
+- **ZIO** 2.1.22
+- **ZIO HTTP** 3.7.0
+- **Kuzminki** 0.9.5
+- **PostgreSQL** (World database sample)
 
-#### Database
+## Features
+
+This demo provides practical examples of:
+
+### Core Operations
+
+- **CRUD Operations** - Type-safe SELECT, INSERT, UPDATE, DELETE queries
+- **Type-Safe Queries** - Compile-time verified SQL with case class mapping using zio-json
+- **Query Caching** - Pre-compiled queries with dynamic WHERE conditions for improved performance
+
+### Advanced Features
+
+- **Streaming** - Efficient CSV export/import with streaming data processing
+- **JSONB Support** - PostgreSQL JSONB field operations (query, update, nested access)
+- **Array Operations** - PostgreSQL array field manipulation
+- **Date/Time Functions** - PostgreSQL timestamp methods and operations
+- **JOIN Queries** - Multi-table queries with subqueries and aggregates
+- **Conditional WHERE** - Optional query parameters with type-safe builders
+
+### Code Examples
+
+Each route file demonstrates specific functionality:
+
+- `SelectRoute.scala` - SELECT queries with JOINs, subqueries, and aggregates
+- `OperationRoute.scala` - INSERT, UPDATE, DELETE with RETURNING
+- `TypeRoute.scala` - Type-safe queries with case class serialization
+- `CacheRoute.scala` - Cached queries with pickWhere
+- `StreamRoute.scala` - Streaming CSV export/import
+- `JsonbRoute.scala` - JSONB field operations
+- `ArrayRoute.scala` - PostgreSQL array operations
+- `DateRoute.scala` - Timestamp and date functions
+
+## Getting Started
+
+### Prerequisites
+
+- PostgreSQL installed and running
+- Scala and sbt installed
+
+### Database Setup
+
+1. Create the database:
 
 ```sql
 CREATE DATABASE world;
 ```
 
+2. Import the sample data:
+
 ```bash
 psql world < db/world.pg
 ```
 
-#### Config
+### Configuration
 
-```sbt
-// src/main/resources/application.conf
+Update the database credentials in `src/main/resources/application.conf`:
 
+```conf
 db {
   name = "world"
-  user = "<USER>"
-  pwd = "<PASS>"
+  user = "<YOUR_USERNAME>"
+  pwd = "<YOUR_PASSWORD>"
 }
 ```
 
-#### Postman
+### Running the Application
 
-If you use [Postman](https://www.postman.com/) you can import `postman/demo.json` where all the endpoints are set up.
+Start the server on port 9000:
 
-#### Run
-
-```sbt
+```bash
 sbt run
 ```
+
+Stop the server with `Ctrl+C`.
+
+### Testing with Postman
+
+If you use [Postman](https://www.postman.com/), import the collection from `postman/demo.json` to get all endpoints pre-configured with example requests.
+
+## API Examples
+
+The demo includes various endpoints demonstrating Kuzminki features:
+
+- `GET /select/country/:code` - Simple SELECT query
+- `GET /select/cities/:code` - JOIN with custom field names
+- `POST /type/insert/trip` - Type-safe INSERT with case class
+- `GET /stream/export/:coin` - Stream database results as CSV
+- `POST /stream/import` - Stream CSV file to database
+- `GET /jsonb/country/:code` - Query JSONB fields
+- `PATCH /array/add/lang` - Add element to PostgreSQL array
+
+See the route files in `src/main/scala/routes/` for complete implementation details.
+
+## Learn More
+
+- [Kuzminki Documentation](https://github.com/karimagnusson/kuzminki-zio-2)
+- [ZIO HTTP Documentation](https://zio.dev/zio-http/)
+- [ZIO Documentation](https://zio.dev/)

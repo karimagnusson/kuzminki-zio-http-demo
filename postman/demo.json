@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "db325124-d493-462f-b1c4-4260609858a3",
+		"_postman_id": "0a9e1865-0f8c-4e06-8ad8-81af35f543d8",
 		"name": "Kuzminki ZHttp Demo",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "6791813"
+		"_exporter_id": "38622039"
 	},
 	"item": [
 		{
@@ -126,9 +126,16 @@
 		},
 		{
 			"name": "/select/and-or/:cont",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
 			"request": {
 				"method": "GET",
 				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": []
+				},
 				"url": {
 					"raw": "http://localhost:9000/select/and-or/Asia",
 					"protocol": "http",
@@ -173,18 +180,7 @@
 				"header": [],
 				"body": {
 					"mode": "urlencoded",
-					"urlencoded": [
-						{
-							"key": "city_id",
-							"value": "1466",
-							"type": "text"
-						},
-						{
-							"key": "price",
-							"value": "1000",
-							"type": "text"
-						}
-					]
+					"urlencoded": []
 				},
 				"url": {
 					"raw": "http://localhost:9000/insert/trip",
@@ -208,18 +204,7 @@
 				"header": [],
 				"body": {
 					"mode": "urlencoded",
-					"urlencoded": [
-						{
-							"key": "id",
-							"value": "6",
-							"type": "text"
-						},
-						{
-							"key": "price",
-							"value": "1500",
-							"type": "text"
-						}
-					]
+					"urlencoded": []
 				},
 				"url": {
 					"raw": "http://localhost:9000/update/trip",
@@ -242,14 +227,13 @@
 				"method": "DELETE",
 				"header": [],
 				"body": {
-					"mode": "urlencoded",
-					"urlencoded": [
-						{
-							"key": "id",
-							"value": "6",
-							"type": "text"
+					"mode": "raw",
+					"raw": "{\"id\": 3}",
+					"options": {
+						"raw": {
+							"language": "json"
 						}
-					]
+					}
 				},
 				"url": {
 					"raw": "http://localhost:9000/delete/trip",
@@ -276,7 +260,6 @@
 				"header": [
 					{
 						"key": "Content-Type",
-						"name": "Content-Type",
 						"value": "application/json",
 						"type": "text"
 					}
@@ -336,25 +319,13 @@
 				"header": [
 					{
 						"key": "Content-Type",
-						"name": "Content-Type",
 						"value": "application/json",
 						"type": "text"
 					}
 				],
 				"body": {
 					"mode": "urlencoded",
-					"urlencoded": [
-						{
-							"key": "city_id",
-							"value": "1466",
-							"type": "text"
-						},
-						{
-							"key": "price",
-							"value": "1000",
-							"type": "text"
-						}
-					]
+					"urlencoded": []
 				},
 				"url": {
 					"raw": "http://localhost:9000/cache/insert/trip",
@@ -379,25 +350,13 @@
 				"header": [
 					{
 						"key": "Content-Type",
-						"name": "Content-Type",
 						"value": "application/json",
 						"type": "text"
 					}
 				],
 				"body": {
-					"mode": "urlencoded",
-					"urlencoded": [
-						{
-							"key": "id",
-							"value": "7",
-							"type": "text"
-						},
-						{
-							"key": "price",
-							"value": "1500",
-							"type": "text"
-						}
-					]
+					"mode": "raw",
+					"raw": "{\n    \"id\": 2,\n    \"price\": 1500\n}"
 				},
 				"url": {
 					"raw": "http://localhost:9000/cache/update/trip",
@@ -421,14 +380,13 @@
 				"method": "DELETE",
 				"header": [],
 				"body": {
-					"mode": "urlencoded",
-					"urlencoded": [
-						{
-							"key": "id",
-							"value": "7",
-							"type": "text"
+					"mode": "raw",
+					"raw": "{\n    \"id\": 7\n}",
+					"options": {
+						"raw": {
+							"language": "json"
 						}
-					]
+					}
 				},
 				"url": {
 					"raw": "http://localhost:9000/cache/delete/trip",
@@ -611,18 +569,7 @@
 				"header": [],
 				"body": {
 					"mode": "urlencoded",
-					"urlencoded": [
-						{
-							"key": "phone",
-							"value": "+91",
-							"type": "text"
-						},
-						{
-							"key": "code",
-							"value": "IND",
-							"type": "text"
-						}
-					]
+					"urlencoded": []
 				},
 				"url": {
 					"raw": "http://localhost:9000/jsonb/add/phone",
@@ -646,14 +593,13 @@
 				"method": "PATCH",
 				"header": [],
 				"body": {
-					"mode": "urlencoded",
-					"urlencoded": [
-						{
-							"key": "code",
-							"value": "IND",
-							"type": "text"
+					"mode": "raw",
+					"raw": "{\n    \"code\": \"IND\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
 						}
-					]
+					}
 				},
 				"url": {
 					"raw": "http://localhost:9000/jsonb/del/phone",

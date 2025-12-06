@@ -1,183 +1,223 @@
 package routes
 
-import zio._
-import zio.http._
-import models._
-import kuzminki.api._
-import kuzminki.fn._
+import zio.*
+import zio.http.*
+import zio.http.codec.PathCodec.path
+import scala.language.implicitConversions
+import models.*
+import kuzminki.api.*
+import kuzminki.api.given
+import kuzminki.fn.*
 
-// Examples of SELECT.
+// SELECT queries with JOIN, subqueries, and aggregates.
 
 object SelectRoute extends Responses {
 
-  val city = Model.get[City]
-  val country = Model.get[Country]
+  val city     = Model.get[City]
+  val country  = Model.get[Country]
   val language = Model.get[Language]
 
-  val routes = Http.collectZIO[Request] {
-
-    case Method.GET -> !! / "select" / "country" / code =>
+  val routes = Routes(
+    // Simple SELECT
+    Method.GET / "select" / "country" / string("code") -> handler { (code: String, req: Request) =>
       sql
         .select(country)
-        .colsJson(t => Seq(
-          t.code,
-          t.name,
-          t.continent,
-          t.region
-        ))
+        .colsJson(t =>
+          Seq(
+            t.code,
+            t.name,
+            t.continent,
+            t.region
+          )
+        )
         .where(_.code === code.toUpperCase)
+        // .printSql  // uncomment to print the SQL query
         .runHeadOpt
-        .map(jsonOpt(_))
+        .map(jsonOptResponse(_))
+    },
 
-    case Method.GET -> !! / "select" / "cities" / code =>
+    // JOIN with custom field names
+    Method.GET / "select" / "cities" / string("code") -> handler { (code: String, req: Request) =>
       sql
         .select(city, country)
-        .colsJson(t => Seq(
-          t.a.code,
-          t.a.population,
-          "city_name" -> t.a.name,    // use column name
-          "country_name" -> t.b.name, // define the name
-          t.b.continent,
-          t.b.region
-        ))
+        .colsJson(t =>
+          Seq(
+            t.a.code,
+            t.a.population,
+            "city_name"    -> t.a.name, // custom field name
+            "country_name" -> t.b.name, // custom field name
+            t.b.continent,
+            t.b.region
+          )
+        )
         .joinOn(_.code, _.code)
         .where(_.b.code === code.toUpperCase)
         .orderBy(_.a.population.desc)
         .limit(5)
+        // .printSql  // uncomment to print the SQL query
         .run
-        .map(jsonList(_))
+        .map(jsonListResponse(_))
+    },
 
-    case Method.GET -> !! / "select" / "lang" / code  =>
+    // Subquery as nested object
+    Method.GET / "select" / "lang" / string("code") -> handler { (code: String, req: Request) =>
       sql
         .select(country)
-        .colsJson(t => Seq(
-          t.code,
-          t.name,
-          sql  // subquery as a nested object
-            .select(language)
-            .colsJson(s => Seq(
-              s.name,
-              s.percentage
-            ))
-            .where(s => Seq(
-              s.code <=> t.code,
-              s.isOfficial === true
-            ))
-            .limit(1)
-            .asColumn
-            .first
-            .as("language")
-        ))
+        .colsJson(t =>
+          Seq(
+            t.code,
+            t.name,
+            sql // subquery returns single object
+              .select(language)
+              .colsJson(s =>
+                Seq(
+                  s.name,
+                  s.percentage
+                )
+              )
+              .where(s =>
+                Seq(
+                  s.code <=> t.code,
+                  s.isOfficial === true
+                )
+              )
+              .limit(1)
+              .asColumn
+              .first
+              .as("language")
+          )
+        )
         .where(_.code === code.toUpperCase)
+        .printSql // uncomment to print the SQL query
         .runHeadOpt
-        .map(jsonOpt(_))
+        .map(jsonOptResponse(_))
+    },
 
-    case Method.GET -> !! / "select" / "country-cities" / code  =>
+    // Nested object with Fn.json and subquery as array
+    Method.GET / "select" / "country-cities" / string("code") -> handler {
+      (code: String, req: Request) =>
+        sql
+          .select(country)
+          .colsJson(t =>
+            Seq(
+              t.code,
+              t.name,
+              Fn.json(
+                Seq( // group columns into nested object
+                  t.continent,
+                  t.region,
+                  t.population
+                )
+              ).as("info"),
+              sql // subquery returns array of objects
+                .select(city)
+                .colsJson(s =>
+                  Seq(
+                    s.name,
+                    s.population
+                  )
+                )
+                .where(_.code <=> t.code)
+                .orderBy(_.population.desc)
+                .limit(5)
+                .asColumn
+                .as("cities")
+            )
+          )
+          .where(_.code === code.toUpperCase)
+          // .printSql  // uncomment to print the SQL query
+          .runHeadOpt
+          .map(jsonOptResponse(_))
+    },
+
+    // Optional WHERE conditions
+    Method.GET / "select" / "optional" -> handler { (req: Request) =>
       sql
         .select(country)
-        .colsJson(t => Seq(
-          t.code,
-          t.name,
-          Fn.json(Seq(  // put some columns in a nested object
+        .colsJson(t =>
+          Seq(
+            t.code,
+            t.name,
             t.continent,
             t.region,
             t.population
-          )).as("info"),
-          sql           // subquery as a array of objects
-            .select(city)
-            .colsJson(s => Seq(
-              s.name,
-              s.population
-            ))
-            .where(_.code <=> t.code)
-            .orderBy(_.population.desc)
-            .limit(5)
-            .asColumn
-            .as("cities")
-        ))
-        .where(_.code === code.toUpperCase)
-        .runHeadOpt
-        .map(jsonOpt(_))
-
-    case req @ Method.GET -> !! / "select" / "optional" =>
-      sql
-        .select(country)
-        .colsJson(t => Seq(
-          t.code,
-          t.name,
-          t.continent,
-          t.region,
-          t.population
-        ))
-        .whereOpt(t => Seq(
-          t.continent === req.q.get("cont"),
-          t.region === req.q.get("region"),
-          t.population > req.q.get("pop_gt").map(_.toInt),
-          t.population < req.q.get("pop_lt").map(_.toInt)
-        ))
+          )
+        )
+        .whereOpt(t =>
+          Seq( // only applies conditions with Some values
+            t.continent === queryStringOpt(req, "cont"),
+            t.region === queryStringOpt(req, "region"),
+            t.population > queryIntOpt(req, "pop_gt"),
+            t.population < queryIntOpt(req, "pop_lt")
+          )
+        )
         .orderBy(_.name.asc)
         .limit(10)
+        // .printSql  // uncomment to print the SQL query
         .run
-        .map(jsonList(_))
+        .map(jsonListResponse(_))
+    },
 
-    case Method.GET -> !! / "select" / "and-or" / cont =>
+    // Complex WHERE with AND/OR logic
+    Method.GET / "select" / "and-or" / string("cont") -> handler { (cont: String, req: Request) =>
       sql
         .select(country)
-        .colsJson(t => Seq(
-          t.code,
-          t.name,
-          t.continent,
-          t.region,
-          t.population,
-          t.surfaceArea,
-          t.lifeExpectancy,
-          t.gnp
-        ))
-        .where(t => Seq(
-          t.continent === cont,
-          Or(
-            And(
-              t.population > 20000000,
-              t.surfaceArea > 500000
-            ),
-            And(
-              t.lifeExpectancy > 65,
-              t.gnp > 150000
+        .colsJson(t =>
+          Seq(
+            t.code,
+            t.name,
+            t.continent,
+            t.region,
+            t.population,
+            t.surfaceArea,
+            t.lifeExpectancy,
+            t.gnp
+          )
+        )
+        .where(t =>
+          Seq(
+            t.continent === cont,
+            Or( // combine conditions with OR
+              And(
+                t.population > 20000000,
+                t.surfaceArea > 500000
+              ),
+              And(
+                t.lifeExpectancy > 65,
+                t.gnp > 150000
+              )
             )
           )
-        ))
-        .orderBy(t => Seq(
-          t.population.desc,
-          t.lifeExpectancy.desc
-        ))
+        )
+        .orderBy(t =>
+          Seq(
+            t.population.desc,
+            t.lifeExpectancy.desc
+          )
+        )
         .limit(10)
+        // .printSql  // uncomment to print the SQL query
         .run
-        .map(jsonList(_))
+        .map(jsonListResponse(_))
+    },
 
-    case Method.GET -> !! / "select" / "population" / cont =>
-      sql
-        .select(country)
-        .colsJson(t => Seq(
-          "count" -> Count.all,
-          "avg" -> Agg.avg(t.population),
-          "max" -> Agg.max(t.population),
-          "min" -> Agg.min(t.population)
-        ))
-        .where(_.continent === cont)
-        .runHead
-        .map(jsonObj(_))
-        
-  }
+    // Aggregate functions
+    Method.GET / "select" / "population" / string("cont") -> handler {
+      (cont: String, req: Request) =>
+        sql
+          .select(country)
+          .colsJson(t =>
+            Seq(
+              "count" -> Count.all,
+              "avg"   -> Agg.avg(t.population),
+              "max"   -> Agg.max(t.population),
+              "min"   -> Agg.min(t.population)
+            )
+          )
+          .where(_.continent === cont)
+          // .printSql  // uncomment to print the SQL query
+          .runHead
+          .map(jsonObjResponse(_))
+    }
+  )
 }
-
-
-
-
-
-
-
-
-
-
-
-

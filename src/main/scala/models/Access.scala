@@ -1,7 +1,8 @@
 package models
 
 import com.typesafe.config.ConfigFactory
-import kuzminki.api._
+import kuzminki.api.*
+import kuzminki.api.given
 
 
 object Access {

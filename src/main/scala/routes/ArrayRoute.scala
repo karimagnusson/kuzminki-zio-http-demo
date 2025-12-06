@@ -1,81 +1,76 @@
 package routes
 
-import zio._
-import zio.http._
-import models._
-import kuzminki.api._
+import zio.*
+import zio.http.*
+import zio.schema.{DeriveSchema, Schema}
+import zio.schema.codec.JsonCodec.schemaBasedBinaryCodec
+import scala.language.implicitConversions
+import models.*
+import kuzminki.api.*
+import kuzminki.api.given
 import kuzminki.column.TypeCol
 
-// Examples for array field.
+// PostgreSQL array operations with type-safe request handling.
 
 object ArrayRoute extends Responses {
 
   val countryData = Model.get[CountryData]
 
-  val routes = Http.collectZIO[Request] {
+  case class LangData(code: String, lang: String)
+  object LangData {
+    given Schema[LangData] = DeriveSchema.gen[LangData]
+  }
 
-    // Select a row with an array field.
-    
-    case Method.GET -> !! / "array" / "langs" / code =>
+  val routes = Routes(
+    // Get country with its languages array as JSON
+    Method.GET / "array" / "langs" / string("code") -> handler { (code: String, req: Request) =>
       sql
         .select(countryData)
-        .colsJson(t => Seq(
-          t.code,
-          t.langs
-        ))
+        .colsJson(t =>
+          Seq(
+            t.code,
+            t.langs
+          )
+        )
         .where(_.code === code.toUpperCase)
         .runHeadOpt
-        .map(jsonOpt(_))
+        .map(jsonOptResponse(_))
+    },
 
-    // Add to the array, make sure "lang" occurs once and sort the array ASC.
+    // Add language to array (unique + sorted ascending)
+    Method.PATCH / "array" / "add" / "lang" -> handler { (req: Request) =>
+      for {
+        data <- req.body.to[LangData]
+        result <- sql
+          .update(countryData)
+          .set(_.langs.addAsc(data.lang)) // addAsc ensures uniqueness and sorts ascending
+          .where(_.code === data.code)
+          .returningJson(t =>
+            Seq(
+              t.code,
+              t.langs
+            )
+          )
+          .runHeadOpt
+      } yield jsonOptResponse(result)
+    },
 
-    case req @ Method.PATCH -> !! / "array" / "add" / "lang"  => withParams(req) { m =>
-      sql
-        .update(countryData)
-        .set(_.langs addAsc m("lang"))
-        .where(_.code === m("code"))
-        .returningJson(t => Seq(
-          t.code,
-          t.langs
-        ))
-        .runHeadOpt
-        .map(jsonOpt(_))
+    // Remove all instances of a language from array
+    Method.PATCH / "array" / "del" / "lang" -> handler { (req: Request) =>
+      for {
+        data <- req.body.to[LangData]
+        result <- sql
+          .update(countryData)
+          .set(_.langs -= data.lang) // -= removes all occurrences
+          .where(_.code === data.code)
+          .returningJson(t =>
+            Seq(
+              t.code,
+              t.langs
+            )
+          )
+          .runHeadOpt
+      } yield jsonOptResponse(result)
     }
-
-    // Remove all instances of "lang" from the array.
-
-    case req @ Method.PATCH -> !! / "array" / "del" / "lang"  => withParams(req) { m =>
-      sql
-        .update(countryData)
-        .set(_.langs -= m("lang"))
-        .where(_.code === m("code"))
-        .returningJson(t => Seq(
-          t.code,
-          t.langs
-        ))
-        .runHeadOpt
-        .map(jsonOpt(_))
-    }
-  }
+  )
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

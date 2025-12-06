@@ -1,3 +1,31 @@
+error id: file://<WORKSPACE>/src/main/scala/routes/DateRoute.scala:`<none>`.
+file://<WORKSPACE>/src/main/scala/routes/DateRoute.scala
+empty definition using pc, found symbol in pc: `<none>`.
+empty definition using semanticdb
+empty definition using fallback
+non-local guesses:
+	 -zio.
+	 -zio#
+	 -zio().
+	 -zio/http.
+	 -zio/http#
+	 -zio/http().
+	 -models.
+	 -models#
+	 -models().
+	 -kuzminki/api.
+	 -kuzminki/api#
+	 -kuzminki/api().
+	 -kuzminki/fn.
+	 -kuzminki/fn#
+	 -kuzminki/fn().
+	 -scala/Predef.
+	 -scala/Predef#
+	 -scala/Predef().
+offset: 2133
+uri: file://<WORKSPACE>/src/main/scala/routes/DateRoute.scala
+text:
+```scala
 package routes
 
 import zio.*
@@ -32,7 +60,7 @@ object DateRoute extends Responses {
         ))
         .orderBy(_.created.asc)
         .run
-        .map(jsonListResponse(_))
+        .map(jsonList(_))
     },
 
     // Aggregate data by quarter
@@ -49,7 +77,7 @@ object DateRoute extends Responses {
           t.created.quarter === queryInt(req, "quarter")  // extract quarter from timestamp
         ))
         .runHead
-        .map(jsonObjResponse(_))
+        .map(jsonObj(_))
     },
 
     // Extract multiple date parts (year, quarter, week)
@@ -57,17 +85,17 @@ object DateRoute extends Responses {
       sql
         .select(btcPrice)
         .colsJson(t => Seq(
-          "price" -> t.high.round(2),            // round to 2 decimal places
+          "price" -> t.high.round(2),
           "year" -> t.created.year,              // extract year
           "quarter" -> t.created.quarter,        // extract quarter
           "week" -> t.created.week,              // extract week number
           "date" -> t.created.format("DD Mon YYYY HH24:MI")
         ))
-        .where(_.high >= queryBigDecimal(req, "price"))
+        .where(_.hi@@gh >= queryBigDecimal(req, "price"))
         .orderBy(_.high.asc)
         .limit(1)
         .runHeadOpt
-        .map(jsonOptResponse(_))
+        .map(jsonOpt(_))
     }
   )
 }
@@ -83,3 +111,10 @@ object DateRoute extends Responses {
 
 
 
+
+```
+
+
+#### Short summary: 
+
+empty definition using pc, found symbol in pc: `<none>`.

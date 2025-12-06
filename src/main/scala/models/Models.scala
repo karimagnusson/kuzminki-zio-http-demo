@@ -1,6 +1,7 @@
 import java.util.UUID
 import java.sql.Timestamp
-import kuzminki.api._
+import kuzminki.api.*
+import kuzminki.api.given
 
 
 package object models {

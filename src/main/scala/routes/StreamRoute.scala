@@ -1,20 +1,22 @@
 package routes
 
 import java.util.UUID
-import zio._
-import zio.stream.{ZStream, ZPipeline, ZSink}
-import zio.http._
-import zio.http.Response
+import zio.*
+import zio.stream.{ZPipeline, ZSink, ZStream}
+import zio.http.*
+import zio.http.codec.TextBinaryCodec.fromSchema
+import scala.language.implicitConversions
 import java.sql.Timestamp
-import models._
-import kuzminki.api._
-import kuzminki.fn._
+import models.*
+import kuzminki.api.*
+import kuzminki.api.given
+import kuzminki.fn.*
 
-// Examples for streaming.
+// Streaming data export and import.
 
 object StreamRoute extends Responses {
 
-  val coinPrice = Model.get[CoinPrice]
+  val coinPrice     = Model.get[CoinPrice]
   val tempCoinPrice = Model.get[TempCoinPrice]
 
   val headers = Headers(
@@ -22,9 +24,8 @@ object StreamRoute extends Responses {
     Header.ContentDisposition.Attachment(Some("coins.csv"))
   )
 
-  val makeLine: Tuple3[String, String, Timestamp] => String = {
-    case (coin, price, takenAt) =>
-      "%s,%s,%s".format(coin, price, takenAt.toString)
+  val makeLine: Tuple3[String, String, Timestamp] => String = { case (coin, price, takenAt) =>
+    "%s,%s,%s".format(coin, price, takenAt.toString)
   }
 
   val parseLine: String => Tuple3[String, BigDecimal, Timestamp] = { line =>
@@ -38,118 +39,114 @@ object StreamRoute extends Responses {
 
   val insertCoinPriceStm = sql
     .insert(coinPrice)
-    .cols3(t => (
-      t.coin,
-      t.price,
-      t.created
-    ))
+    .cols3(t =>
+      (
+        t.coin,
+        t.price,
+        t.created
+      )
+    )
     .cache
-  
-  val routes = Http.collectHandler[Request] {
-    
-    // Stream data as a csv file
 
-    case Method.GET -> !! / "stream" / "export" / coin =>
-      Handler.fromStream(
-        sql
+  val routes = Routes(
+    // Stream database query results as CSV file
+    Method.GET / "stream" / "export" / string("coin") -> handler { (coin: String, req: Request) =>
+      for {
+        env <- ZIO.environment[Kuzminki]
+
+        stream = sql
           .select(coinPrice)
-          .cols3(t => (
-            t.coin,
-            Fn.roundStr(t.price, 2),
-            t.created
-          ))
+          .cols3(t =>
+            (
+              t.coin,
+              Fn.roundStr(t.price, 2),
+              t.created
+            )
+          )
           .where(_.coin === coin.toUpperCase)
           .orderBy(_.created.asc)
-          .stream(500)
+          .stream
           .map(makeLine)
           .intersperse("\n")
-      ).updateHeaders(_ ++ headers)
+          .provideEnvironment(env)
 
-    // Stream csv file to the database
-    // file: /csv/eth-price.csv
+        response = Response(
+          status = Status.Ok,
+          headers = headers,
+          body = Body.fromStream(stream)
+        )
+      } yield response
+    },
 
-    case req @ Method.POST -> !! / "stream" / "import" =>
-      Handler.fromZIO(
-        req
-          .body
-          .asStream
-          .via(ZPipeline.utf8Decode)
-          .via(ZPipeline.splitLines)
-          .map(parseLine)
-          .transduce(insertCoinPriceStm.collect(100)) // Collect data to a Chunk of 500 rows
-          .run(insertCoinPriceStm.asChunkSink) // Insert 100 rows each time.
-          .map(jsonOk)
-      )
+    // Stream CSV file upload directly to database with batching
+    Method.POST / "stream" / "import" -> handler { (req: Request) =>
+      req.body.asStream
+        .via(ZPipeline.utf8Decode)
+        .via(ZPipeline.splitLines)
+        .map(parseLine)
+        .run(insertCoinPriceStm.asSink)  // insert to database
+        .as(jsonOkResponse(()))
+    },
 
-    // Stream csv file into a temporary table.
-    // If there are no errors, move the data from the temp table to the target table.
-    // Then delete the data from the temp table. 
-
-    case req @ Method.POST -> !! / "stream" / "import" / "safe" =>
-      
+    // Safe import using temporary table with rollback on failure
+    Method.POST / "stream" / "import" / "safe" -> handler { (req: Request) =>
       val uid = UUID.randomUUID
 
-      Handler.fromZIO((for {
+      (for {
 
-        _ <- req // Stream to temp table.
-          .body
-          .asStream
+        _ <- req // stream to temporary table
+          .body.asStream
           .via(ZPipeline.utf8Decode)
           .via(ZPipeline.splitLines)
           .map(parseLine)
-          .map {            // Add UUID used by the temp table.
+          .map { // add UUID for temp table isolation
             case (coin, price, takenAt) =>
               (uid, coin, price, takenAt)
           }
-          .run(sql
-            .insert(tempCoinPrice)
-            .cols4(t => (
-              t.uid,
+          .run(
+            sql
+              .insert(tempCoinPrice)
+              .cols4(t =>
+                (
+                  t.uid,
+                  t.coin,
+                  t.price,
+                  t.created
+                )
+              )
+              .cache
+              .asSink
+          )
+
+        _ <- sql // move data using INSERT from SELECT
+          .insert(coinPrice)
+          .cols3(t =>
+            (
               t.coin,
               t.price,
               t.created
-            ))
-            .cache
-            .asSink
+            )
           )
-
-        _ <- sql  // Move data in one statement using INSERT from SELECT.
-          .insert(coinPrice)
-          .cols3(t => (
-            t.coin,
-            t.price,
-            t.created
-          ))
           .fromSelect(
             sql
               .select(tempCoinPrice)
-              .cols3(t => (
-                t.coin,
-                t.price,
-                t.created
-              ))
+              .cols3(t =>
+                (
+                  t.coin,
+                  t.price,
+                  t.created
+                )
+              )
               .where(_.uid === uid)
           )
           .run
 
       } yield Response.json(okTrue)).tapEither { _ =>
-        sql  // Delete from temp table on success or failure.
+        sql // cleanup temp table on success or failure
           .delete(tempCoinPrice)
           .where(_.uid === uid)
           .run
-      })
-  }
+      }
+    }
+  )
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

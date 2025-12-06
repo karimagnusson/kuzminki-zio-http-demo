@@ -1,3 +1,21 @@
+error id: file://<WORKSPACE>/src/main/scala/routes/JsonbRoute.scala:`<none>`.
+file://<WORKSPACE>/src/main/scala/routes/JsonbRoute.scala
+empty definition using pc, found symbol in pc: `<none>`.
+empty definition using semanticdb
+empty definition using fallback
+non-local guesses:
+	 -zio/DeriveSchema.
+	 -zio/http/DeriveSchema.
+	 -zio/schema/DeriveSchema.
+	 -models/DeriveSchema.
+	 -kuzminki/api/DeriveSchema.
+	 -kuzminki/fn/DeriveSchema.
+	 -DeriveSchema.
+	 -scala/Predef.DeriveSchema.
+offset: 650
+uri: file://<WORKSPACE>/src/main/scala/routes/JsonbRoute.scala
+text:
+```scala
 package routes
 
 import zio.*
@@ -11,8 +29,7 @@ import kuzminki.api.given
 import kuzminki.fn.*
 import kuzminki.column.TypeCol
 
-// JSONB operations with type-safe request handling.
-// JSON operators follow PostgreSQL syntax: -> for object, ->> for text, #>> for deep path.
+// Examples for jsonb field.
 
 object JsonbRoute extends Responses {
 
@@ -25,56 +42,47 @@ object JsonbRoute extends Responses {
 
   case class CodeData(code: String)
   object CodeData {
-    given Schema[CodeData] = DeriveSchema.gen[CodeData]
+    given Schema[CodeData] = DeriveSchema@@.gen[CodeData]
   }
 
   val routes = Routes(
-    // Select JSONB field
     Method.GET / "jsonb" / "country" / string("code") -> handler { (code: String, req: Request) =>
       sql
         .select(countryData)
-        .colsJson(t =>
-          Seq(
-            t.uid,
-            t.code,
-            t.langs, // array field
-            t.data   // jsonb field
-          )
-        )
+        .colsJson(t => Seq(
+          t.uid,
+          t.code,
+          t.langs, // array field
+          t.data   // jsonb field
+        ))
         .where(_.code === code.toUpperCase)
         .runHeadOpt
         .map(jsonOptResponse(_))
     },
 
-    // Query nested JSONB field and concatenate JSONB objects
     Method.GET / "jsonb" / "capital" / string("name") -> handler { (name: String, req: Request) =>
       sql
         .select(countryData)
-        .colsJson(t =>
-          Seq(
-            t.uid,
-            t.code,
-            t.langs,
-            (t.data || t.cities).as("data") // concatenate JSONB objects
-          )
-        )
-        .where(_.data -> "capital" ->> "name" === name) // query nested field
+        .colsJson(t => Seq(
+          t.uid,
+          t.code,
+          t.langs,
+          (t.data || t.cities).as("data") // add cities to data
+        ))
+        .where(_.data -> "capital" ->> "name" === name)
         .runHeadOpt
         .map(jsonOptResponse(_))
     },
 
-    // Access JSONB array element and extract nested values
     Method.GET / "jsonb" / "city" / "population" -> handler { (req: Request) =>
       sql
         .select(countryData)
-        .colsJson(t =>
-          Seq(
-            t.uid,
-            t.code,
-            (t.data ->> "name").as("name"), // extract text value
-            (t.cities -> "cities" -> 0).as("largest_city") // access array element
-          )
-        )
+        .colsJson(t => Seq(
+          t.uid,
+          t.code,
+          (t.data ->> "name").as("name"),
+          (t.cities -> "cities" -> 0).as("largest_city")
+        ))
         .where(t => (t.cities -> "cities" -> 0 ->> "population").isNotNull)
         .orderBy(t => (t.cities -> "cities" -> 0 ->> "population").asInt.desc)
         .limit(5)
@@ -82,46 +90,38 @@ object JsonbRoute extends Responses {
         .map(jsonListResponse)
     },
 
-    // Deep path extraction and aggregate
-    Method.GET / "jsonb" / "capital-avg" / string("cont") -> handler {
-      (cont: String, req: Request) =>
-        sql
-          .select(countryData)
-          .colsJson(t =>
-            Seq(
-              Agg.avg((t.data #>> Seq("capital", "population")).asInt) // deep path extraction
-            )
-          )
-          .where(t =>
-            Seq(
-              (t.data #>> Seq("capital", "population")).isNotNull,
-              t.data ->> "continent" === cont
-            )
-          )
-          .runHead
-          .map(jsonObjResponse)
+    Method.GET / "jsonb" / "capital-avg" / string("cont") -> handler { (cont: String, req: Request) =>
+      sql
+        .select(countryData)
+        .colsJson(t => Seq(
+          Agg.avg((t.data #>> Seq("capital", "population")).asInt)
+        ))
+        .where(t => Seq(
+          (t.data #>> Seq("capital", "population")).isNotNull,
+          t.data ->> "continent" === cont
+        ))
+        .runHead
+        .map(jsonObjResponse)
     },
 
-    // Add field to JSONB object
     Method.PATCH / "jsonb" / "add" / "phone" -> handler { (req: Request) =>
       for {
         data <- req.body.to[PhoneData]
         result <- sql
           .update(countryData)
-          .set(_.data += Jsonb(s"""{"phone": "${data.phone}"}""")) // add field to JSONB object
+          .set(_.data += Jsonb("""{"phone": "%s"}""".format(data.phone))) // add "phone" to object
           .where(_.code === data.code)
           .returning1(_.data)
           .runHeadOpt
       } yield jsonOptResponse(result)
     },
 
-    // Remove field from JSONB object
     Method.PATCH / "jsonb" / "del" / "phone" -> handler { (req: Request) =>
       for {
         data <- req.body.to[CodeData]
         result <- sql
           .update(countryData)
-          .set(_.data -= "phone") // remove field from JSONB object
+          .set(_.data -= "phone") // remove "phone" from the object
           .where(_.code === data.code)
           .returning1(_.data)
           .runHeadOpt
@@ -129,3 +129,31 @@ object JsonbRoute extends Responses {
     }
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
+
+
+#### Short summary: 
+
+empty definition using pc, found symbol in pc: `<none>`.
