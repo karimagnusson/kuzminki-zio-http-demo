@@ -44,8 +44,8 @@ object SelectRoute extends Responses {
           Seq(
             t.a.code,
             t.a.population,
-            "city_name"    -> t.a.name, // custom field name
-            "country_name" -> t.b.name, // custom field name
+            t.a.name.as("city_name"),    // custom field name
+            t.b.name.as("country_name"), // custom field name
             t.b.continent,
             t.b.region
           )
@@ -208,10 +208,10 @@ object SelectRoute extends Responses {
           .select(country)
           .colsJson(t =>
             Seq(
-              "count" -> Count.all,
-              "avg"   -> Agg.avg(t.population),
-              "max"   -> Agg.max(t.population),
-              "min"   -> Agg.min(t.population)
+              Count.all.as("count"),
+              Agg.avg(t.population).as("avg"),
+              Agg.max(t.population).as("max"),
+              Agg.min(t.population).as("min")
             )
           )
           .where(_.continent === cont)
