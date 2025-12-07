@@ -1,6 +1,4 @@
-scalaVersion := "3.3.1"
-
-name := "kuzminki-zhttp-demo"
+scalaVersion := "3.3.7"
 
 version := "0.4"
 
@@ -19,5 +17,7 @@ lazy val root = (project in file("."))
       "dev.zio"                 %% "zio-http"       % "3.7.0",
       "dev.zio"                 %% "zio-json"       % "0.7.45",
       "io.github.karimagnusson" %% "kuzminki-zio-2" % "0.9.5"
-    )
+    ),
+    run / fork := true,
+    run / connectInput := true
   )

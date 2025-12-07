@@ -88,7 +88,7 @@ object SelectRoute extends Responses {
           )
         )
         .where(_.code === code.toUpperCase)
-        .printSql // uncomment to print the SQL query
+        // .printSql // uncomment to print the SQL query
         .runHeadOpt
         .map(jsonOptResponse(_))
     },

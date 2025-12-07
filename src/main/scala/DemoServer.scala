@@ -11,5 +11,8 @@ object DemoServer extends ZIOAppDefault {
   val dbLayer     = Kuzminki.layer(dbConfig)
   val configLayer = Server.defaultWithPort(9000)
 
-  def run = Server.serve(Routes.app).provide(configLayer ++ dbLayer)
+  def run =
+    Server.serve(Routes.app)
+      .provide(configLayer ++ dbLayer)
+      .onInterrupt(ZIO.logInfo("Server interrupted, shutting down..."))
 }
